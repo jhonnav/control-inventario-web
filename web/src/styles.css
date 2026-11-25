@@ -1,0 +1,19 @@
+/* Estilos globales de la aplicación */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f5f7fa;
+  color: #243247;
+  line-height: 1.5;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}

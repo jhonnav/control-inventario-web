@@ -1,0 +1,549 @@
+<a class="skip-link" href="#contenido">
+  Saltar al contenido
+</a>
+
+<div class="app">
+
+  <!-- MENÚ LATERAL -->
+  <aside class="sidebar">
+
+    <div class="brand">
+      <h2>Control de Inventario</h2>
+      <p>Gestión de productos</p>
+    </div>
+
+    <nav aria-label="Menú principal">
+
+      <button
+        type="button"
+        [class.active]="vista() === 'inicio'"
+        (click)="navegar('inicio')">
+        Inicio
+      </button>
+
+      <button
+        type="button"
+        [class.active]="vista() === 'registro'"
+        (click)="navegar('registro')">
+        Registrar producto
+      </button>
+
+      <button
+        type="button"
+        [class.active]="vista() === 'consulta'"
+        (click)="navegar('consulta')">
+        Consultar inventario
+      </button>
+
+    </nav>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main id="contenido" class="main">
+
+    <!-- MENSAJES -->
+    @if (mensaje()) {
+      <div
+        class="mensaje"
+        [class.error]="esError()"
+        [attr.role]="esError() ? 'alert' : 'status'"
+        aria-live="polite">
+        {{ mensaje() }}
+      </div>
+    }
+
+    @if (cargando()) {
+      <p role="status">Cargando productos...</p>
+    }
+
+    <!-- PANTALLA 1: INICIO -->
+    @if (vista() === 'inicio') {
+
+      <section class="view">
+
+        <header class="page-head">
+          <h1>Bienvenido al inventario</h1>
+          <p>Resumen general de tus productos registrados.</p>
+        </header>
+
+        <div class="cards">
+
+          <article class="card stat">
+            <h2>Productos registrados</h2>
+            <strong>{{ productos().length }}</strong>
+            <p>Tipos de productos</p>
+          </article>
+
+          <article class="card stat">
+            <h2>Unidades disponibles</h2>
+            <strong>{{ totalUnidades() }}</strong>
+            <p>Total de unidades en inventario</p>
+          </article>
+
+          <article class="card stat">
+            <h2>Productos con stock bajo</h2>
+            <strong>{{ stockBajo() }}</strong>
+            <p>En su mínimo, por debajo o agotados</p>
+          </article>
+
+        </div>
+
+        <section class="card welcome">
+          <h2>¿Qué deseas hacer?</h2>
+          <p>
+            Puedes registrar nuevos productos o consultar
+            los que ya tienes almacenados.
+          </p>
+
+          <div class="actions">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="navegar('registro')">
+              Registrar producto
+            </button>
+
+            <button
+              class="btn secondary"
+              type="button"
+              (click)="navegar('consulta')">
+              Ver inventario
+            </button>
+          </div>
+        </section>
+
+      </section>
+    }
+
+    <!-- PANTALLA 2: REGISTRAR / EDITAR -->
+    @if (vista() === 'registro') {
+
+      <section class="view">
+
+        <header class="page-head">
+          <h1>
+            {{ codigoEnEdicion()
+              ? 'Editar producto'
+              : 'Registrar producto' }}
+          </h1>
+
+          <p>Ingresa la información del producto.</p>
+        </header>
+
+        <form
+          class="card form-card"
+          [formGroup]="formulario"
+          (ngSubmit)="guardar()"
+          novalidate>
+
+          <div class="form-grid">
+
+            <!-- CÓDIGO -->
+            <div class="field">
+              <label for="codigo">Código del producto</label>
+
+              <input
+                id="codigo"
+                type="text"
+                formControlName="codigo"
+                maxlength="30"
+                placeholder="Ej. P001"
+                required
+              />
+
+              @if (formulario.controls.codigo.invalid &&
+                   formulario.controls.codigo.touched) {
+                <small class="field-error">
+                  Usa de 1 a 30 letras sin tilde, números, guion o guion bajo.
+                </small>
+              }
+            </div>
+
+            <!-- NOMBRE -->
+            <div class="field">
+              <label for="nombre">Nombre del producto</label>
+
+              <input
+                id="nombre"
+                type="text"
+                formControlName="nombre"
+                maxlength="100"
+                placeholder="Ej. Teclado"
+                required
+              />
+
+              @if (formulario.controls.nombre.invalid &&
+                   formulario.controls.nombre.touched) {
+                <small class="field-error">
+                  Ingresa un nombre válido de 1 a 100 caracteres.
+                </small>
+              }
+            </div>
+
+            <!-- CATEGORÍA -->
+            <div class="field">
+              <label for="categoria">Categoría</label>
+
+              <select
+                id="categoria"
+                formControlName="categoria"
+                required>
+
+                <option value="">Selecciona una categoría</option>
+
+                @for (categoria of categorias(); track categoria) {
+                  <option [value]="categoria">
+                    {{ categoria }}
+                  </option>
+                }
+
+              </select>
+
+              @if (formulario.controls.categoria.invalid &&
+                   formulario.controls.categoria.touched) {
+                <small class="field-error">
+                  Selecciona una categoría.
+                </small>
+              }
+            </div>
+
+            <!-- CANTIDAD -->
+            <div class="field">
+              <label for="cantidad">
+                {{ codigoEnEdicion()
+                  ? 'Stock actual (se cambia con movimientos)'
+                  : 'Cantidad inicial' }}
+              </label>
+
+              <input
+                id="cantidad"
+                type="number"
+                min="0"
+                max="999999"
+                step="1"
+                formControlName="cantidad"
+                required
+              />
+
+              @if (formulario.controls.cantidad.invalid &&
+                   formulario.controls.cantidad.touched) {
+                <small class="field-error">
+                  Ingresa un entero entre 0 y 999999.
+                </small>
+              }
+            </div>
+
+            <!-- STOCK MÍNIMO -->
+            <div class="field">
+              <label for="stock_minimo">Stock mínimo para alertar</label>
+
+              <input
+                id="stock_minimo"
+                type="number"
+                min="0"
+                max="999999"
+                step="1"
+                formControlName="stock_minimo"
+                required
+              />
+
+              @if (formulario.controls.stock_minimo.invalid &&
+                   formulario.controls.stock_minimo.touched) {
+                <small class="field-error">
+                  Ingresa un entero entre 0 y 999999.
+                </small>
+              }
+            </div>
+
+            <!-- PRECIO -->
+            <div class="field">
+              <label for="precio">Precio unitario ($)</label>
+
+              <input
+                id="precio"
+                type="number"
+                min="0"
+                max="99999999"
+                step="0.01"
+                formControlName="precio"
+                required
+              />
+
+              @if (formulario.controls.precio.invalid &&
+                   formulario.controls.precio.touched) {
+                <small class="field-error">
+                  Ingresa un precio válido, máximo dos decimales.
+                </small>
+              }
+            </div>
+
+          </div>
+
+          <div class="form-actions">
+
+            <button
+              class="btn primary"
+              type="submit"
+              [disabled]="guardando()">
+              {{ guardando()
+                ? 'Guardando...'
+                : codigoEnEdicion()
+                  ? 'Guardar cambios'
+                  : 'Guardar producto' }}
+            </button>
+
+            <button
+              class="btn secondary"
+              type="button"
+              (click)="limpiar()">
+              Limpiar
+            </button>
+
+            <button
+              class="btn secondary"
+              type="button"
+              (click)="navegar('inicio')">
+              Volver
+            </button>
+
+          </div>
+
+        </form>
+
+      </section>
+    }
+
+    <!-- PANTALLA 3: CONSULTAR INVENTARIO -->
+    @if (vista() === 'consulta') {
+
+      <section class="view">
+
+        <header class="page-head">
+          <h1>Consultar inventario</h1>
+          <p>Consulta, busca, edita y elimina productos.</p>
+        </header>
+
+        <div class="card table-card">
+
+          <!-- BUSCADOR -->
+          <div class="search-wrap">
+            <label for="buscar">Buscar producto</label>
+
+            <input
+              id="buscar"
+              type="search"
+              placeholder="Buscar por código o nombre"
+              [value]="busqueda()"
+              (input)="busqueda.set($any($event.target).value)"
+            />
+          </div>
+
+          <!-- TABLA -->
+          <div class="table-scroll">
+
+            <table>
+              <caption>
+                Productos registrados
+              </caption>
+
+              <thead>
+                <tr>
+                  <th scope="col">Código</th>
+                  <th scope="col">Nombre</th>
+                  <th scope="col">Categoría</th>
+                  <th scope="col">Cantidad</th>
+                  <th scope="col">Precio</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Acciones</th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                @for (producto of filtrados(); track producto.id) {
+
+                  <tr>
+
+                    <td>{{ producto.codigo }}</td>
+                    <td>{{ producto.nombre }}</td>
+                    <td>{{ producto.categoria }}</td>
+                    <td>{{ producto.cantidad }}</td>
+
+                    <td>
+                      {{ producto.precio |
+                         currency:'USD':'symbol':'1.2-2' }}
+                    </td>
+
+                    <td>
+                      <span
+                        class="status"
+                        [class.ok]="producto.estado === 'Disponible'"
+                        [class.low]="producto.estado === 'Stock bajo'"
+                        [class.agotado]="producto.estado === 'Agotado'">
+                        {{ producto.estado }}
+                      </span>
+                    </td>
+
+                    <td class="row-actions">
+
+                      <button
+                        type="button"
+                        class="btn-edit"
+                        [attr.aria-label]="'Movimientos de ' + producto.nombre"
+                        (click)="verMovimientos(producto)">
+                        Movimientos
+                      </button>
+
+                      <button
+                        type="button"
+                        class="btn-edit"
+                        [attr.aria-label]="'Editar ' + producto.nombre"
+                        (click)="editar(producto)">
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        class="btn-delete"
+                        [attr.aria-label]="'Eliminar ' + producto.nombre"
+                        (click)="eliminar(producto)">
+                        Eliminar
+                      </button>
+
+                    </td>
+
+                  </tr>
+
+                } @empty {
+
+                  <tr>
+                    <td colspan="7" class="empty">
+                      No hay productos para mostrar.
+                    </td>
+                  </tr>
+
+                }
+
+              </tbody>
+            </table>
+
+          </div>
+
+          <div class="actions">
+            <button
+              type="button"
+              class="btn primary"
+              (click)="navegar('registro')">
+              Nuevo producto
+            </button>
+          </div>
+
+        </div>
+
+      </section>
+    }
+
+    <!-- PANTALLA 4: MOVIMIENTOS -->
+    @if (vista() === 'movimientos' && seleccionado(); as producto) {
+
+      <section class="view">
+
+        <header class="page-head">
+          <h1>Movimientos de {{ producto.nombre }}</h1>
+          <p>
+            Código {{ producto.codigo }} ·
+            Stock actual: {{ producto.cantidad }} ·
+            {{ producto.estado }}
+          </p>
+        </header>
+
+        <form
+          class="card form-card"
+          [formGroup]="formMovimiento"
+          (ngSubmit)="guardarMovimiento()"
+          novalidate>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="tipo">Tipo de movimiento</label>
+              <select id="tipo" formControlName="tipo">
+                <option value="ENTRADA">Entrada</option>
+                <option value="SALIDA">Salida</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="unidades">Unidades</label>
+              <input id="unidades" type="number" min="1" max="999999"
+                     step="1" formControlName="cantidad" required />
+              @if (formMovimiento.controls.cantidad.invalid &&
+                   formMovimiento.controls.cantidad.touched) {
+                <small class="field-error">
+                  Ingresa un entero entre 1 y 999999.
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="motivo">Motivo</label>
+              <input id="motivo" type="text" maxlength="150"
+                     formControlName="motivo"
+                     placeholder="Ej. Compra a proveedor" required />
+              @if (formMovimiento.controls.motivo.invalid &&
+                   formMovimiento.controls.motivo.touched) {
+                <small class="field-error">
+                  Escribe el motivo, máximo 150 caracteres.
+                </small>
+              }
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn primary" type="submit"
+                    [disabled]="guardando()">
+              {{ guardando() ? 'Guardando...' : 'Registrar movimiento' }}
+            </button>
+            <button class="btn secondary" type="button"
+                    (click)="navegar('consulta')">
+              Volver al inventario
+            </button>
+          </div>
+        </form>
+
+        <div class="card table-card history">
+          <div class="table-scroll">
+            <table>
+              <caption>Historial de movimientos</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Fecha</th>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Unidades</th>
+                  <th scope="col">Stock resultante</th>
+                  <th scope="col">Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (m of historial(); track m.id) {
+                  <tr>
+                    <td>{{ m.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>{{ m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida' }}</td>
+                    <td>{{ m.cantidad }}</td>
+                    <td>{{ m.stock_resultante }}</td>
+                    <td>{{ m.motivo }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="empty">Sin movimientos.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    }
+
+  </main>
+</div>
